@@ -1,45 +1,47 @@
 import streamlit as st
+import numpy as np
+import cv2
+import gdown
+import os
+from PIL import Image
+from tensorflow.keras.models import load_model
 
-# ✅ This must be the first Streamlit command
+# Set page config at the top (MUST be first Streamlit command)
 st.set_page_config(page_title="Emergency Vehicle Detector", layout="centered")
 
-import numpy as np
-from tensorflow.keras.models import load_model
-from PIL import Image
-import cv2
-import os
+# Model file details
+MODEL_PATH = "emergency_vehicle_cnn.h5"
+GDRIVE_MODEL_ID = "YOUR_GOOGLE_DRIVE_FILE_ID_HERE"  # <-- Replace with your actual Google Drive ID
 
-# Title
-st.title("Emergency Vehicle Detection using CNN")
+# Download the model if not already present
+if not os.path.exists(MODEL_PATH):
+    with st.spinner("Downloading the model..."):
+        url = f"https://drive.google.com/uc?id={GDRIVE_MODEL_ID}"
+        gdown.download(url, MODEL_PATH, quiet=False)
 
 # Load the model
-@st.cache_resource
-def load_cnn_model():
-    model_path = "emergency_vehicle_cnn.h5"
-    if os.path.exists(model_path):
-        return load_model(model_path)
-    else:
-        st.error("Model file not found. Please make sure 'emergency_vehicle_cnn.h5' exists.")
-        return None
+model = load_model(MODEL_PATH)
 
-model = load_cnn_model()
+# Streamlit app UI
+st.title("Emergency Vehicle Detector")
+st.write("Upload an image of a vehicle to detect if it's an emergency vehicle.")
 
-# Upload an image
-uploaded_file = st.file_uploader("Upload an image of a vehicle", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None and model:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert('RGB')
+    st.image(image, caption='Uploaded Image', use_column_width=True)
 
-    # Preprocess image
-    img = image.resize((128, 128))
-    img_array = np.array(img) / 255.0
-    img_array = img_array.reshape(1, 128, 128, 3)
+    # Preprocessing
+    image_array = np.array(image)
+    image_resized = cv2.resize(image_array, (64, 64))  # Adjust size if needed
+    image_normalized = image_resized / 255.0
+    input_image = np.expand_dims(image_normalized, axis=0)
 
-    # Predict
-    prediction = model.predict(img_array)[0][0]
-    predicted_class = "Emergency Vehicle" if prediction >= 0.5 else "Non-Emergency Vehicle"
+    # Prediction
+    prediction = model.predict(input_image)
+    class_label = "Emergency Vehicle" if prediction[0][0] > 0.5 else "Non-Emergency Vehicle"
 
-    # Display result
-    st.markdown(f"### Prediction: **{predicted_class}**")
-    st.progress(float(prediction))
+    # Result
+    st.subheader("Prediction:")
+    st.success(f"The image is classified as: **{class_label}**")
