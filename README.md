@@ -13,10 +13,10 @@ To help traffic control systems and smart city infrastructure identify emergency
 ## 📸 Demo Screenshots
 
 ### ✅ Emergency Vehicle Detected
-![Emergency Vehicle](emergency_prediction.jpg)
+![Emergency Vehicle](Predicted_Emergency_Vehicle.png)
 
 ### 🚗 Non-Emergency Vehicle Detected
-![Non-Emergency Vehicle](images/non_emergency_prediction.jpg)
+![Non-Emergency Vehicle](Predicted_NoN_Emergency_Vehicle.png)
 
 ---
 
