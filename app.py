@@ -1,47 +1,44 @@
 import streamlit as st
+from keras.models import load_model
+from PIL import Image
 import numpy as np
-import cv2
 import gdown
 import os
-from PIL import Image
-from tensorflow.keras.models import load_model
 
-# Set page config at the top (MUST be first Streamlit command)
 st.set_page_config(page_title="Emergency Vehicle Detector", layout="centered")
+st.title("Emergency Vehicle Detection")
 
-# Model file details
 MODEL_PATH = "emergency_vehicle_cnn.h5"
-GDRIVE_MODEL_ID = "YOUR_GOOGLE_DRIVE_FILE_ID_HERE"  # <-- Replace with your actual Google Drive ID
+GDRIVE_MODEL_ID = "1sgHAva3pdl5kpo4sJ_Oly9J9H-kRQSQP"
 
-# Download the model if not already present
 if not os.path.exists(MODEL_PATH):
     with st.spinner("Downloading the model..."):
         url = f"https://drive.google.com/uc?id={GDRIVE_MODEL_ID}"
         gdown.download(url, MODEL_PATH, quiet=False)
 
-# Load the model
 model = load_model(MODEL_PATH)
 
-# Streamlit app UI
-st.title("Emergency Vehicle Detector")
-st.write("Upload an image of a vehicle to detect if it's an emergency vehicle.")
-
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("Upload an image of a vehicle", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert('RGB')
-    st.image(image, caption='Uploaded Image', use_column_width=True)
+    st.image(image, caption='Uploaded Image', use_container_width=True)
 
-    # Preprocessing
-    image_array = np.array(image)
-    image_resized = cv2.resize(image_array, (64, 64))  # Adjust size if needed
-    image_normalized = image_resized / 255.0
-    input_image = np.expand_dims(image_normalized, axis=0)
+    resized = image.resize((128, 128))
+    image_array = np.array(resized) / 255.0  # normalize
+    input_image = np.expand_dims(image_array, axis=0)  # Shape: (1, 128, 128, 3)
 
-    # Prediction
     prediction = model.predict(input_image)
-    class_label = "Emergency Vehicle" if prediction[0][0] > 0.5 else "Non-Emergency Vehicle"
+    st.write("🔍 Raw prediction output:", prediction)
 
-    # Result
+    # If prediction is a probability score (sigmoid)
+    if prediction.shape[-1] == 1:
+        predicted_class = int(prediction[0][0] > 0.5)
+        class_names = ["Non-Emergency Vehicle", "Emergency Vehicle"]
+    else:
+        # If prediction is softmax (2 class)
+        predicted_class = np.argmax(prediction, axis=1)[0]
+        class_names = ["Non-Emergency Vehicle", "Emergency Vehicle"]
+
     st.subheader("Prediction:")
-    st.success(f"The image is classified as: **{class_label}**")
+    st.success(f"🚗 The vehicle is: **{class_names[predicted_class]}**")
